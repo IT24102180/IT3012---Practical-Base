@@ -4,9 +4,13 @@ import tkinter as tk
 from agent import SearchAgent
 
 
+# ==============================================================
+# ENVIRONMENT
+# ==============================================================
+
 class VisualGridHuntGame:
     """
-    Pacman-style grid environment for IT3012 Practical 03.
+    Pacman-style grid environment for IT3012 Practical 04.
     """
 
     def __init__(
@@ -120,10 +124,11 @@ class VisualGridHuntGame:
         """
         Return the information available to the agent.
 
-        Practical 03 requires the global state:
+        Includes:
             grid_size
             walls
             all_food
+            position
         """
 
         x, y = self.agent_pos
@@ -145,7 +150,7 @@ class VisualGridHuntGame:
                 self.score,
 
             # --------------------------------------------------
-            # Practical 03 global state
+            # Global state
             # --------------------------------------------------
 
             "grid_size": (
@@ -406,7 +411,7 @@ class GridGameGUI:
         # ------------------------------------------------------
 
         self.root.title(
-            "IT3012 - Practical 03 - Uninformed Search"
+            "IT3012 - Practical 04 - Informed Search"
         )
 
         self.root.geometry(
@@ -513,6 +518,10 @@ class GridGameGUI:
             pady=5
         )
 
+        # ------------------------------------------------------
+        # BFS
+        # ------------------------------------------------------
+
         self.bfs_button = tk.Button(
 
             self.algorithm_frame,
@@ -529,6 +538,10 @@ class GridGameGUI:
             side=tk.LEFT,
             padx=5
         )
+
+        # ------------------------------------------------------
+        # DFS
+        # ------------------------------------------------------
 
         self.dfs_button = tk.Button(
 
@@ -547,6 +560,10 @@ class GridGameGUI:
             padx=5
         )
 
+        # ------------------------------------------------------
+        # UCS
+        # ------------------------------------------------------
+
         self.ucs_button = tk.Button(
 
             self.algorithm_frame,
@@ -560,6 +577,27 @@ class GridGameGUI:
         )
 
         self.ucs_button.pack(
+            side=tk.LEFT,
+            padx=5
+        )
+
+        # ------------------------------------------------------
+        # A*
+        # ------------------------------------------------------
+
+        self.astar_button = tk.Button(
+
+            self.algorithm_frame,
+
+            text="A*",
+
+            width=8,
+
+            command=lambda:
+                self.change_algorithm("AStar")
+        )
+
+        self.astar_button.pack(
             side=tk.LEFT,
             padx=5
         )
@@ -855,6 +893,10 @@ class GridGameGUI:
             state="disabled"
         )
 
+        self.astar_button.config(
+            state="disabled"
+        )
+
         def step():
 
             # --------------------------------------------------
@@ -963,6 +1005,10 @@ class GridGameGUI:
                 )
 
                 self.ucs_button.config(
+                    state="normal"
+                )
+
+                self.astar_button.config(
                     state="normal"
                 )
 
