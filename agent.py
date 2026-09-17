@@ -1,38 +1,158 @@
 from collections import deque
 import heapq
 import math
+import random
+
+from logic_engine import KnowledgeBase
 
 
-class SearchAgent:
+# ==============================================================
+# PRACTICAL 01 - SIMPLE REFLEX AGENT
+# ==============================================================
+
+class SimpleReflexAgent:
     """
-    Search Agent for IT3012 Practicals 03 and 04.
+    Simple Reflex Agent.
 
-    Supports:
-        - BFS
-        - DFS
-        - UCS
-        - A*
+    Chooses an action using only the current percept.
+    It does not maintain memory of previous states.
     """
 
     def __init__(self):
+        self.actions_pool = ["Up", "Down", "Left", "Right"]
+
+    def sense_and_act(self, percept):
+        """
+        React only to the current percept.
+        """
+
+        wall_ahead = percept.get("wall_ahead", False)
+        food_here = percept.get("food_here", False)
+
+        # If food is currently available, remain on the tile.
+        if food_here:
+            return "Stay"
+
+        # If a wall is detected, choose another valid direction.
+        if wall_ahead:
+            return random.choice(
+                ["Left", "Right", "Down", "Up"]
+            )
+
+        return random.choice(self.actions_pool)
+
+
+# ==============================================================
+# PRACTICAL 02 - MODEL-BASED AGENT
+# ==============================================================
+
+class ModelBasedAgent:
+    """
+    Model-Based Agent.
+
+    Maintains internal state so that it can remember previous
+    actions and avoid repeatedly making the same decision.
+    """
+
+    def __init__(self):
+        self.actions_pool = ["Up", "Down", "Left", "Right"]
+
+        # Internal memory
+        self.last_action = None
+
+    def sense_and_act(self, percept):
+        """
+        Choose an action using the current percept and memory.
+        """
+
+        wall_ahead = percept.get("wall_ahead", False)
+        food_here = percept.get("food_here", False)
+
+        if food_here:
+            return "Stay"
+
+        possible_actions = self.actions_pool.copy()
+
+        # If a wall is detected, avoid repeating the previous
+        # movement action.
+        if wall_ahead:
+
+            if self.last_action in possible_actions:
+                possible_actions.remove(self.last_action)
+
+            action = random.choice(possible_actions)
+
+            self.last_action = action
+
+            return action
+
+        # Also avoid repeating the previous action where possible.
+        if self.last_action in possible_actions:
+            possible_actions.remove(self.last_action)
+
+        action = random.choice(possible_actions)
+
+        self.last_action = action
+
+        return action
+
+
+# ==============================================================
+# PRACTICALS 03, 04 AND 05 - SEARCH AGENT
+# ==============================================================
+
+class SearchAgent:
+    """
+    Search Agent for IT3012.
+
+    Practical 03:
+        - BFS
+        - DFS
+        - UCS
+
+    Practical 04:
+        - A*
+        - Manhattan heuristic
+        - Euclidean heuristic
+
+    Practical 05:
+        - Knowledge Base
+        - Horn Clause rules
+        - Forward Chaining
+        - Logical feasibility checking
+    """
+
+    def __init__(self):
+
         self.plan = []
+
         self.active_algo = "BFS"
+
+        # ======================================================
+        # PRACTICAL 05 - KNOWLEDGE BASE
+        # ======================================================
+
+        self.kb = KnowledgeBase()
+
+        # Rule 1:
+        # TargetVisible AND HasDust -> SafeToEngage
+        self.kb.tell_rule(
+            ["TargetVisible", "HasDust"],
+            "SafeToEngage"
+        )
+
+        # Rule 2:
+        # SafeToEngage AND BloodseekerMissing -> Retreat
+        self.kb.tell_rule(
+            ["SafeToEngage", "BloodseekerMissing"],
+            "Retreat"
+        )
 
     # ==========================================================
     # GET NEIGHBORS
     # ==========================================================
 
     def get_neighbors(self, state, grid_size, walls):
-        """
-        Return valid neighboring states and the actions required
-        to reach them.
-
-        Movement:
-            Up    -> y + 1
-            Down  -> y - 1
-            Left  -> x - 1
-            Right -> x + 1
-        """
 
         x, y = state
         width, height = grid_size
@@ -50,37 +170,40 @@ class SearchAgent:
 
             nx, ny = position
 
-            # Check boundaries
+            # Grid boundary check
             if nx < 0 or nx >= width:
                 continue
 
             if ny < 0 or ny >= height:
                 continue
 
-            # Check walls
+            # Physical reachability check
             if position in walls:
                 continue
 
-            neighbors.append((position, action))
+            neighbors.append(
+                (position, action)
+            )
 
         return neighbors
 
     # ==========================================================
-    # BFS SEARCH
+    # BFS
     # ==========================================================
 
-    def bfs_search(self, start, goal, grid_size, walls):
-        """
-        Breadth-First Search.
-
-        Returns:
-            List of actions from start to goal.
-        """
+    def bfs_search(
+        self,
+        start,
+        goal,
+        walls,
+        grid_size
+    ):
 
         queue = deque()
 
-        # state, path
-        queue.append((start, []))
+        queue.append(
+            (start, [])
+        )
 
         reached = {start}
 
@@ -88,11 +211,9 @@ class SearchAgent:
 
             current, path = queue.popleft()
 
-            # Goal test
             if current == goal:
                 return path
 
-            # Expand node
             for neighbor, action in self.get_neighbors(
                 current,
                 grid_size,
@@ -112,21 +233,22 @@ class SearchAgent:
         return []
 
     # ==========================================================
-    # DFS SEARCH
+    # DFS
     # ==========================================================
 
-    def dfs_search(self, start, goal, grid_size, walls):
-        """
-        Depth-First Search.
-
-        Returns:
-            List of actions from start to goal.
-        """
+    def dfs_search(
+        self,
+        start,
+        goal,
+        walls,
+        grid_size
+    ):
 
         stack = []
 
-        # state, path
-        stack.append((start, []))
+        stack.append(
+            (start, [])
+        )
 
         reached = {start}
 
@@ -134,11 +256,9 @@ class SearchAgent:
 
             current, path = stack.pop()
 
-            # Goal test
             if current == goal:
                 return path
 
-            # Expand node
             for neighbor, action in self.get_neighbors(
                 current,
                 grid_size,
@@ -158,27 +278,29 @@ class SearchAgent:
         return []
 
     # ==========================================================
-    # UCS SEARCH
+    # UCS
     # ==========================================================
 
-    def ucs_search(self, start, goal, grid_size, walls):
-        """
-        Uniform Cost Search.
-
-        Each movement has a cost of 1.
-
-        Returns:
-            List of actions from start to goal.
-        """
+    def ucs_search(
+        self,
+        start,
+        goal,
+        walls,
+        grid_size
+    ):
 
         frontier = []
 
         counter = 0
 
-        # cost, counter, state, path
         heapq.heappush(
             frontier,
-            (0, counter, start, [])
+            (
+                0,
+                counter,
+                start,
+                []
+            )
         )
 
         reached = {
@@ -191,11 +313,9 @@ class SearchAgent:
                 frontier
             )
 
-            # Goal test
             if current == goal:
                 return path
 
-            # Expand node
             for neighbor, action in self.get_neighbors(
                 current,
                 grid_size,
@@ -204,7 +324,6 @@ class SearchAgent:
 
                 new_cost = cost + 1
 
-                # If this is a cheaper path
                 if (
                     neighbor not in reached
                     or new_cost < reached[neighbor]
@@ -233,12 +352,6 @@ class SearchAgent:
     # ==========================================================
 
     def manhattan_distance(self, pos, goal):
-        """
-        Calculate Manhattan distance between two positions.
-
-        Formula:
-            |x1 - x2| + |y1 - y2|
-        """
 
         x1, y1 = pos
         x2, y2 = goal
@@ -250,12 +363,6 @@ class SearchAgent:
     # ==========================================================
 
     def euclidean_distance(self, pos, goal):
-        """
-        Calculate Euclidean distance between two positions.
-
-        Formula:
-            sqrt((x1 - x2)^2 + (y1 - y2)^2)
-        """
 
         x1, y1 = pos
         x2, y2 = goal
@@ -267,6 +374,45 @@ class SearchAgent:
         )
 
     # ==========================================================
+    # PRACTICAL 05 - LOGICAL FEASIBILITY
+    # ==========================================================
+
+    def is_feasible(
+        self,
+        position,
+        tile_percepts
+    ):
+        """
+        Check whether a physically reachable tile is
+        logically feasible.
+
+        If the KB deduces 'Retreat', the position is
+        considered infeasible.
+        """
+
+        # Clear facts from previous candidate tile
+        self.kb.clear_facts()
+
+        # Obtain percepts for this tile
+        percepts = tile_percepts.get(
+            position,
+            []
+        )
+
+        # Add percepts as KB facts
+        for fact in percepts:
+            self.kb.tell_fact(fact)
+
+        # Perform inference
+        self.kb.forward_chain()
+
+        # Retreat means logically infeasible
+        if "Retreat" in self.kb.facts:
+            return False
+
+        return True
+
+    # ==========================================================
     # A* SEARCH
     # ==========================================================
 
@@ -276,25 +422,12 @@ class SearchAgent:
         goal_pos,
         walls,
         grid_size,
-        heuristic_type="manhattan"
+        heuristic_type="manhattan",
+        tile_percepts=None
     ):
-        """
-        A* Search.
 
-        f(n) = g(n) + h(n)
-
-        g(n):
-            Cost from start to current node.
-
-        h(n):
-            Estimated cost from current node to goal.
-
-        heuristic_type:
-            "manhattan" or "euclidean"
-
-        Returns:
-            List of actions from start to goal.
-        """
+        if tile_percepts is None:
+            tile_percepts = {}
 
         # Select heuristic
         if heuristic_type.lower() == "euclidean":
@@ -304,7 +437,6 @@ class SearchAgent:
 
         frontier = []
 
-        # Starting cost
         g_cost = 0
 
         h_cost = heuristic(
@@ -315,12 +447,6 @@ class SearchAgent:
         f_cost = g_cost + h_cost
 
         counter = 0
-
-        # ------------------------------------------------------
-        # Priority queue item
-        #
-        # f_cost, g_cost, counter, current_pos, path_taken
-        # ------------------------------------------------------
 
         heapq.heappush(
             frontier,
@@ -333,7 +459,6 @@ class SearchAgent:
             )
         )
 
-        # Best known g-cost for each state
         reached_states = {
             start_pos: 0
         }
@@ -348,43 +473,47 @@ class SearchAgent:
                 path_taken
             ) = heapq.heappop(frontier)
 
-            # Ignore outdated queue entries
+            # Ignore outdated frontier entries
             if (
                 current_pos in reached_states
                 and current_g > reached_states[current_pos]
             ):
                 continue
 
-            # --------------------------------------------------
             # Goal test
-            # --------------------------------------------------
-
             if current_pos == goal_pos:
                 return path_taken
 
-            # --------------------------------------------------
             # Expand current node
-            # --------------------------------------------------
-
             for neighbor, action in self.get_neighbors(
                 current_pos,
                 grid_size,
                 walls
             ):
 
-                # Every movement costs 1
+                # ==============================================
+                # PRACTICAL 05 FEASIBILITY CHECK
+                # ==============================================
+
+                if not self.is_feasible(
+                    neighbor,
+                    tile_percepts
+                ):
+                    continue
+
+                # ==============================================
+                # NORMAL A* PROCESSING
+                # ==============================================
+
                 g_new = current_g + 1
 
-                # Heuristic estimate
                 h_new = heuristic(
                     neighbor,
                     goal_pos
                 )
 
-                # Total estimated cost
                 f_new = g_new + h_new
 
-                # Only continue if this is a better path
                 if (
                     neighbor not in reached_states
                     or g_new < reached_states[neighbor]
@@ -394,7 +523,9 @@ class SearchAgent:
 
                     counter += 1
 
-                    new_path = path_taken + [action]
+                    new_path = (
+                        path_taken + [action]
+                    )
 
                     heapq.heappush(
                         frontier,
@@ -420,12 +551,6 @@ class SearchAgent:
         grid_size,
         walls
     ):
-        """
-        Find the closest reachable food using BFS.
-
-        Returns:
-            Position of closest food.
-        """
 
         closest_food = None
         shortest_path = None
@@ -435,11 +560,10 @@ class SearchAgent:
             path = self.bfs_search(
                 start,
                 food,
-                grid_size,
-                walls
+                walls,
+                grid_size
             )
 
-            # Ignore unreachable food
             if not path and start != food:
                 continue
 
@@ -462,20 +586,17 @@ class SearchAgent:
         start,
         goal,
         grid_size,
-        walls
+        walls,
+        tile_percepts=None
     ):
-        """
-        Select the search algorithm according to
-        self.active_algo.
-        """
 
         if self.active_algo == "BFS":
 
             return self.bfs_search(
                 start,
                 goal,
-                grid_size,
-                walls
+                walls,
+                grid_size
             )
 
         elif self.active_algo == "DFS":
@@ -483,8 +604,8 @@ class SearchAgent:
             return self.dfs_search(
                 start,
                 goal,
-                grid_size,
-                walls
+                walls,
+                grid_size
             )
 
         elif self.active_algo == "UCS":
@@ -492,8 +613,8 @@ class SearchAgent:
             return self.ucs_search(
                 start,
                 goal,
-                grid_size,
-                walls
+                walls,
+                grid_size
             )
 
         elif self.active_algo == "AStar":
@@ -503,7 +624,8 @@ class SearchAgent:
                 goal_pos=goal,
                 walls=walls,
                 grid_size=grid_size,
-                heuristic_type="manhattan"
+                heuristic_type="manhattan",
+                tile_percepts=tile_percepts
             )
 
         else:
@@ -519,13 +641,6 @@ class SearchAgent:
     # ==========================================================
 
     def sense_and_act(self, percept):
-        """
-        Receive percept and return the next action.
-        """
-
-        # ------------------------------------------------------
-        # Create a new plan when no plan exists
-        # ------------------------------------------------------
 
         if not self.plan:
 
@@ -541,18 +656,17 @@ class SearchAgent:
                 percept["all_food"]
             )
 
-            # --------------------------------------------------
-            # If there is no food left
-            # --------------------------------------------------
+            # Practical 05 percept information
+            tile_percepts = percept.get(
+                "tile_percepts",
+                {}
+            )
 
+            # No food remaining
             if not food_positions:
-
                 return "Stay"
 
-            # --------------------------------------------------
             # Find closest food
-            # --------------------------------------------------
-
             goal = self.find_closest_food(
                 start,
                 food_positions,
@@ -560,18 +674,10 @@ class SearchAgent:
                 walls
             )
 
-            # --------------------------------------------------
-            # If no reachable food exists
-            # --------------------------------------------------
-
             if goal is None:
-
                 return "Stay"
 
-            # --------------------------------------------------
-            # A* algorithm
-            # --------------------------------------------------
-
+            # A*
             if self.active_algo == "AStar":
 
                 self.plan = self.astar_search(
@@ -579,28 +685,22 @@ class SearchAgent:
                     goal_pos=goal,
                     walls=walls,
                     grid_size=grid_size,
-                    heuristic_type="manhattan"
+                    heuristic_type="manhattan",
+                    tile_percepts=tile_percepts
                 )
 
-            # --------------------------------------------------
-            # Other algorithms
-            # --------------------------------------------------
-
+            # BFS / DFS / UCS
             else:
 
                 self.plan = self.search(
                     start,
                     goal,
                     grid_size,
-                    walls
+                    walls,
+                    tile_percepts
                 )
 
-        # ------------------------------------------------------
-        # Execute next action from plan
-        # ------------------------------------------------------
-
         if self.plan:
-
             return self.plan.pop(0)
 
         return "Stay"
